@@ -1,4 +1,4 @@
-# Logs
+﻿# Logs
 logs
 *.log
 npm-debug.log*
@@ -25,5 +25,3 @@ release/
 # Local git backups
 .git.backup-*/
 
-# Build artifacts
-release/
