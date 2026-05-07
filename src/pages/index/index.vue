@@ -1,68 +1,57 @@
 ﻿<template>
   <view class="app-shell" @dragover.prevent @drop.prevent="handleDrop">
     <view class="main-panel">
-  
-
       <view class="content-grid">
-        <view class="player-section">
-        <view v-if="!currentMedia" class="empty-state">
-              <text class="empty-icon">▶</text>
-              <text class="empty-title">给「{{ currentGroup.name }}」添加文件</text>
-              <text class="empty-text">添加或拖入文件后，只会进入当前分组，并按该分组列表播放。</text>
-            </view>
+        <view class="player-card">
+          <view v-if="!currentMedia" class="empty-state">
+            <text class="empty-icon">▶</text>
+            <text class="empty-title">给「{{ currentGroup.name }}」添加文件</text>
+            <text class="empty-text">添加或拖入文件后，只会进入当前分组，并按该分组列表播放。</text>
+          </view>
 
-          <view v-else class="player-card">
-            <view v-if="!currentMedia" class="empty-state">
-              <text class="empty-icon">▶</text>
-              <text class="empty-title">给「{{ currentGroup.name }}」添加文件</text>
-              <text class="empty-text">添加或拖入文件后，只会进入当前分组，并按该分组列表播放。</text>
+          <view v-else class="player-wrap">
+            <view class="player-top-overlay">
+              <text class="player-badge">{{ currentGroup.name }}</text>
+              <text class="player-title">{{ currentMedia.name }}</text>
             </view>
-
-            <view v-else class="player-wrap">
-              <view class="player-top-overlay">
-                <text class="player-badge">{{ currentGroup.name }}</text>
-                <text class="player-title">{{ currentMedia.name }}</text>
+            <video
+              ref="playerRef"
+              class="player"
+              :src="currentMedia.url"
+              controls
+              @ended="playNext"
+              @error="handleError"
+              @play="handlePlay"
+              @pause="handlePause"
+              @timeupdate="rememberProgress"
+              @loadedmetadata="syncPlaybackRate"
+            ></video>
+            <view v-if="currentMedia.kind === 'audio'" class="audio-overlay">
+              <text class="audio-icon">♪</text>
+            </view>
+            <view class="player-bottom-fade"></view>
+            <view class="control-bar">
+              <button class="control-button ghost tooltip-button" data-tip="后退 10 秒" @click="seekBy(-10)">↶</button>
+              <button class="control-button tooltip-button" data-tip="上一个" @click="playPrevious">⏮</button>
+              <button class="control-button play-control tooltip-button" :data-tip="isPlaying ? '暂停' : '播放'" @click="togglePlay">{{ isPlaying ? '⏸' : '▶' }}</button>
+              <button class="control-button tooltip-button" data-tip="下一个" @click="playNext">⏭</button>
+              <button class="control-button ghost tooltip-button" data-tip="快进 10 秒" @click="seekBy(10)">↷</button>
+              <button class="control-button ghost tooltip-button" data-tip="降低音量" @click="changeVolume(-0.1)">🔉</button>
+              <button class="control-button ghost tooltip-button" data-tip="提高音量" @click="changeVolume(0.1)">🔊</button>
+              <button class="control-button ghost tooltip-button" :data-tip="`播放模式：${playModeLabel}`" @click="togglePlayMode">{{ playModeIcon }}</button>
+              <button class="control-button ghost tooltip-button" data-tip="全屏" @click="toggleFullscreen">⛶</button>
+              <view class="speed-box">
+                <text class="speed-label">倍速</text>
+                <picker :value="speedIndex" :range="speedOptions" @change="changeSpeed">
+                  <view class="speed-picker">{{ playbackRate }}x</view>
+                </picker>
               </view>
-              <video
-                ref="playerRef"
-                class="player"
-                :src="currentMedia.url"
-                controls
-                autoplay
-                @ended="playNext"
-                @error="handleError"
-                @play="syncPlaybackRate"
-                @timeupdate="rememberProgress"
-                @loadedmetadata="syncPlaybackRate"
-              ></video>
-              <view v-if="currentMedia.kind === 'audio'" class="audio-overlay">
-                <text class="audio-icon">♪</text>
-              </view>
-              <view class="player-bottom-fade"></view>
-              <view class="control-bar">
-                <button class="control-button ghost" @click="seekBy(-10)">↶</button>
-                <button class="control-button" @click="playPrevious">⏮</button>
-                <button class="control-button play-control" @click="togglePlay">⏯</button>
-                <button class="control-button" @click="playNext">⏭</button>
-                <button class="control-button ghost" @click="seekBy(10)">↷</button>
-                <button class="control-button ghost" @click="changeVolume(-0.1)">🔉</button>
-                <button class="control-button ghost" @click="changeVolume(0.1)">🔊</button>
-                <button class="control-button ghost tooltip-button" :data-tip="`播放模式：${playModeLabel}`" @click="togglePlayMode">{{ playModeIcon }}</button>
-                <button class="control-button ghost" @click="toggleFullscreen">⛶</button>
-                <view class="speed-box">
-                  <text class="speed-label">倍速</text>
-                  <picker :value="speedIndex" :range="speedOptions" @change="changeSpeed">
-                    <view class="speed-picker">{{ playbackRate }}x</view>
-                  </picker>
-                </view>
-                <view class="speed-box volume-box">
-                  <text class="speed-label">音量</text>
-                  <text class="speed-picker">{{ volumePercent }}%</text>
-                </view>
+              <view class="speed-box volume-box">
+                <text class="speed-label">音量</text>
+                <text class="speed-picker">{{ volumePercent }}%</text>
               </view>
             </view>
           </view>
-
         </view>
 
         <view class="right-panel">
@@ -72,7 +61,6 @@
                 <text class="playlist-title">媒体库</text>
                 <text class="playlist-tip">{{ activeModuleLabel }} · {{ currentGroups.length }} 个分组 · {{ currentModuleFileCount }} 个文件</text>
               </view>
-              <button class="icon-action" @click="addFiles">＋</button>
             </view>
 
             <view class="library-tabs">
@@ -81,30 +69,29 @@
               </button>
             </view>
 
-            <input class="search-input" v-model="searchKeyword" placeholder="搜索当前分组内容" placeholder-class="search-placeholder" />
-
             <scroll-view class="library-tree" scroll-y>
               <view class="module-tools">
-                <text class="playlist-tip">当前 {{ activeModuleLabel }}</text>
-                <button class="icon-action small" @click.stop="createGroup(activeModule)">＋</button>
+             
+                <button class="icon-action" @click.stop="createGroup(activeModule)">添加分组</button>
               </view>
 
               <view v-for="group in currentGroups" :key="group.id" class="group-node">
-                <view class="group-item" :class="{ active: group.id === activeGroupId }" @click="selectGroup(group.id, activeModule)">
-                  <view class="group-marker"></view>
+                <view class="group-item" @click="selectGroup(group.id, activeModule)">
+            
                   <view class="tree-main" @click.stop="toggleGroup(group.id, activeModule)">
                     <text class="group-name">{{ expandedGroups[group.id] ? '▾' : '▸' }} {{ group.name }}</text>
-                    <text class="group-count">{{ group.items.length }} 个文件 · {{ getGroupDurationText(group) }}</text>
+                    <text class="group-count">{{ group.items.length }} 个文件 </text>
                   </view>
                   <view class="group-actions">
+                    <button class="mini-button icon-mini add tooltip-button" data-tip="添加文件" @click.stop="addFiles(group.id, activeModule)">＋</button>
                     <button class="mini-button icon-mini tooltip-button" data-tip="重命名" @click.stop="renameGroup(group.id, activeModule)">✎</button>
                     <button class="mini-button icon-mini danger tooltip-button" data-tip="删除" @click.stop="deleteGroup(group.id, activeModule)">🗑</button>
                   </view>
                 </view>
 
                 <view v-if="expandedGroups[group.id]" class="media-children">
-                  <view v-if="getVisibleItems(group, activeModule).length === 0" class="list-empty compact">{{ group.items.length ? '没有匹配的文件' : '当前分组还没有文件' }}</view>
-                  <view v-for="item in getVisibleItems(group, activeModule)" :key="item.id" class="media-row" :class="{ active: item.id === currentMediaId }" @click="playItem(item.id, group.id, activeModule)">
+                  <view v-if="group.items.length === 0" class="list-empty compact">当前分组还没有文件</view>
+                  <view v-for="item in group.items" :key="item.id" class="media-row" :class="{ active: item.id === currentMediaId }" @click="playItem(item.id, group.id, activeModule)">
                     <text class="media-index">{{ getGroupItemIndex(group, item.id) + 1 }}</text>
                     <view class="media-row-main">
                       <text class="media-row-name">{{ item.name }}</text>
@@ -176,8 +163,8 @@ export default {
       playMode: 'order',
       volume: 1,
       progressMap: {},
-      searchKeyword: '',
       warning: '',
+      isPlaying: false,
       expandedModules: { video: true, audio: true },
       expandedGroups: { 'video-default': true },
     }
@@ -214,13 +201,6 @@ export default {
     },
     volumePercent() {
       return Math.round(this.volume * 100)
-    },
-    filteredItems() {
-      const keyword = this.searchKeyword.trim().toLowerCase()
-      if (!keyword) {
-        return this.currentGroup.items
-      }
-      return this.currentGroup.items.filter(item => `${item.name} ${item.path}`.toLowerCase().includes(keyword))
     },
     currentProgressText() {
       return this.getProgressText(this.currentMediaId)
@@ -283,13 +263,6 @@ export default {
     },
     getGroupItemIndex(group, itemId) {
       return group.items.findIndex(item => item.id === itemId)
-    },
-    getVisibleItems(group, moduleKey) {
-      const keyword = this.searchKeyword.trim().toLowerCase()
-      if (!keyword || group.id !== this.activeGroupId || moduleKey !== this.activeModule) {
-        return group.items
-      }
-      return group.items.filter(item => `${item.name} ${item.path}`.toLowerCase().includes(keyword))
     },
     toggleModule(moduleKey) {
       this.expandedModules[moduleKey] = !this.expandedModules[moduleKey]
@@ -370,16 +343,16 @@ export default {
       this.expandedModules[moduleKey] = true
       this.expandedGroups[group.id] = true
     },
-    async addFiles() {
+    async addFiles(groupId = this.activeGroupId, moduleKey = this.activeModule) {
       if (window.electronMedia) {
         const files = await window.electronMedia.openFiles()
-        this.addMediaFiles(files)
+        this.addMediaFiles(files, groupId, moduleKey)
         return
       }
 
-      this.openBrowserFilePicker()
+      this.openBrowserFilePicker(groupId, moduleKey)
     },
-    openBrowserFilePicker() {
+    openBrowserFilePicker(groupId = this.activeGroupId, moduleKey = this.activeModule) {
       if (!document?.createElement) {
         this.warning = '当前平台暂不支持直接选择本地文件。'
         return
@@ -388,11 +361,11 @@ export default {
       const input = document.createElement('input')
       input.type = 'file'
       input.multiple = true
-      input.accept = this.activeModule === 'audio' ? 'audio/*,.mp3,.wav,.ogg,.flac,.aac,.m4a' : 'video/*,.mp4,.avi,.m3u8,.mov,.mkv,.webm'
+      input.accept = moduleKey === 'audio' ? 'audio/*,.mp3,.wav,.ogg,.flac,.aac,.m4a' : 'video/*,.mp4,.avi,.m3u8,.mov,.mkv,.webm'
       input.style.display = 'none'
       input.addEventListener('change', event => {
         const files = Array.from(event.target.files || []).map(file => this.toBrowserMediaFile(file))
-        this.addMediaFiles(files)
+        this.addMediaFiles(files, groupId, moduleKey)
         input.remove()
       })
       document.body.appendChild(input)
@@ -427,8 +400,13 @@ export default {
       })
       this.addMediaFiles(files)
     },
-    addMediaFiles(files) {
+    addMediaFiles(files, groupId = this.activeGroupId, moduleKey = this.activeModule) {
       if (!files.length) {
+        return
+      }
+      const targetGroup = this.getModuleGroups(moduleKey).find(group => group.id === groupId)
+      if (!targetGroup) {
+        this.warning = '目标分组不存在，无法添加文件。'
         return
       }
 
@@ -436,17 +414,20 @@ export default {
         ...file,
         kind: audioExts.includes(file.ext) ? 'audio' : 'video',
       }))
-      const matchedFiles = normalizedFiles.filter(file => file.kind === this.activeModule)
+      const matchedFiles = normalizedFiles.filter(file => file.kind === moduleKey)
       const skippedCount = normalizedFiles.length - matchedFiles.length
 
       if (matchedFiles.length) {
-        this.currentGroup.items.push(...matchedFiles)
-        if (!this.currentGroup.items.some(item => item.id === this.currentMediaId)) {
-          this.playItem(matchedFiles[0].id)
+        targetGroup.items.push(...matchedFiles)
+        this.expandedModules[moduleKey] = true
+        this.expandedGroups[groupId] = true
+        if (!this.currentMediaId && groupId === this.activeGroupId && moduleKey === this.activeModule) {
+          this.currentMediaId = matchedFiles[0].id
         }
       }
 
-      this.warning = skippedCount ? `已跳过 ${skippedCount} 个不属于当前${this.activeModuleLabel}模块的文件。` : this.getFormatWarning(matchedFiles[0]?.ext)
+      const moduleLabel = this.getModuleLabel(moduleKey)
+      this.warning = skippedCount ? `已跳过 ${skippedCount} 个不属于${moduleLabel}模块的文件。` : this.getFormatWarning(matchedFiles[0]?.ext)
     },
     playItem(itemId, groupId = this.activeGroupId, moduleKey = this.activeModule) {
       if (groupId !== this.activeGroupId || moduleKey !== this.activeModule) {
@@ -457,6 +438,13 @@ export default {
       }
       this.currentMediaId = itemId
       this.warning = this.getFormatWarning(this.currentMedia?.ext)
+      this.$nextTick(() => {
+        const player = this.getPlayer()
+        if (player) {
+          player.play()
+          this.isPlaying = true
+        }
+      })
     },
     getItemIndex(itemId) {
       return this.currentGroup.items.findIndex(item => item.id === itemId)
@@ -566,6 +554,7 @@ export default {
       }
       player.currentTime = 0
       player.play()
+      this.isPlaying = true
     },
     togglePlay() {
       const player = this.getPlayer()
@@ -574,8 +563,10 @@ export default {
       }
       if (player.paused) {
         player.play()
+        this.isPlaying = true
       } else {
         player.pause()
+        this.isPlaying = false
       }
     },
     seekBy(seconds) {
@@ -613,6 +604,13 @@ export default {
         player.volume = this.volume
       }
     },
+    handlePlay() {
+      this.isPlaying = true
+      this.syncPlaybackRate()
+    },
+    handlePause() {
+      this.isPlaying = false
+    },
     togglePlayMode() {
       const currentIndex = playModes.indexOf(this.playMode)
       this.playMode = playModes[(currentIndex + 1) % playModes.length]
@@ -645,13 +643,7 @@ export default {
       }
       return `上次 ${this.formatTime(seconds)}`
     },
-    getGroupDurationText(group) {
-      const progressCount = group.items.filter(item => this.progressMap[item.id]).length
-      if (!group.items.length) {
-        return '空分组'
-      }
-      return progressCount ? `${progressCount} 个有进度` : '未播放'
-    },
+
     formatTime(totalSeconds) {
       const minutes = Math.floor(totalSeconds / 60)
       const seconds = totalSeconds % 60
@@ -718,6 +710,14 @@ export default {
       }
     },
     getPlayer() {
+      // H5 / Electron 下 uni-app 的 video 组件 ref 不是原生 HTMLVideoElement，
+      // 直接调用 ref.pause() 可能无效；这里优先取内部原生 video 节点。
+      // App 端可继续补充 uni.createVideoContext('playerRef', this) 的平台适配。
+      const nativePlayer = typeof document !== 'undefined' ? document.querySelector('.player video, video.player') : null
+      if (nativePlayer) {
+        return nativePlayer
+      }
+
       const playerRef = this.$refs.playerRef
       return Array.isArray(playerRef) ? playerRef[0] : playerRef
     },
@@ -778,16 +778,12 @@ button:active {
   padding: 22rpx;
   margin-bottom: 14rpx;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(83, 136, 255, 0.72);
   border-radius: 22rpx;
   background: rgba(255, 255, 255, 0.052);
 }
 
-.group-item.active {
-  border-color: rgba(83, 136, 255, 0.72);
-  background: linear-gradient(135deg, rgba(47, 107, 255, 0.3), rgba(124, 92, 255, 0.13));
-  box-shadow: 0 16rpx 38rpx rgba(0, 0, 0, 0.16);
-}
+
 
 .media-children {
   padding: 0 0 8rpx 34rpx;
@@ -830,6 +826,11 @@ button:active {
   background: rgba(255, 93, 93, 0.1);
 }
 
+.mini-button.add {
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.12);
+}
+
 .move-button {
   padding: 0 14rpx;
   color: #bfdbfe;
@@ -839,10 +840,15 @@ button:active {
 
 .group-name {
   margin-bottom: 8rpx;
-  font-size: 26rpx;
-  font-weight: 700;
-}
+  font-size: 28rpx;
 
+}
+.group-count{
+  margin-left:24rpx;
+    margin-bottom: 8rpx;
+  font-size: 28rpx;
+
+}
 .main-panel {
   position: relative;
   display: flex;
@@ -885,27 +891,16 @@ button:active {
 
 .content-grid {
   flex: 1;
-  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(360rpx, 3fr);
+  gap: 30rpx;
+  align-items: stretch;
   height: auto;
   min-height: 0;
 }
 
-.player-section {
-  position: absolute;
-  inset: 0;
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-}
-
 .right-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 5;
-  width: 30%;
-  min-width: 360rpx;
+  width: auto;
   min-height: 0;
   overflow: hidden;
 }
@@ -1276,9 +1271,9 @@ button:active {
 }
 
 .icon-action {
-  width: 64rpx;
-  height: 64rpx;
-  padding: 0;
+
+  /* height: 64rpx; */
+  /* padding: 8px 12px; */
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18rpx;
   color: #ffffff;
@@ -1288,14 +1283,6 @@ button:active {
   font-weight: 800;
 }
 
-.icon-action.small {
-  width: 52rpx;
-  height: 52rpx;
-  flex: 0 0 52rpx;
-  border-radius: 15rpx;
-  line-height: 52rpx;
-  font-size: 28rpx;
-}
 
 .media-name {
   margin-bottom: 10rpx;
@@ -1323,7 +1310,7 @@ button:active {
 }
 
 .library-tree {
-  height: calc(100% - 222rpx);
+  height: calc(100% - 136rpx);
   margin-top: 20rpx;
 }
 
@@ -1478,7 +1465,6 @@ button:active {
     height: auto;
   }
 
-  .player-section,
   .right-panel {
     position: static;
     width: auto;
