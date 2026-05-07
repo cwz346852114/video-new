@@ -1,0 +1,79 @@
+{
+  "name": "uni-video",
+  "version": "0.0.0",
+  "description": "uni-app desktop application for Windows",
+  "author": "",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev:electron": "electron . --dev",
+    "build:electron": "uni build && electron-builder --win",
+    "dev:android": "uni -p app",
+    "build:android": "uni build -p app"
+  },
+  "build": {
+    "appId": "com.univideo.desktop",
+    "productName": "Uni Video",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/build/h5/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Uni Video"
+    }
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-5000720260410001",
+    "@dcloudio/uni-app-harmony": "3.0.0-5000720260410001",
+    "@dcloudio/uni-app-plus": "3.0.0-5000720260410001",
+    "@dcloudio/uni-components": "3.0.0-5000720260410001",
+    "@dcloudio/uni-h5": "3.0.0-5000720260410001",
+    "@dcloudio/uni-mp-alipay": "3.0.0-5000720260410001",
+    "@dcloudio/uni-mp-baidu": "3.0.0-5000720260410001",
+    "@dcloudio/uni-mp-harmony": "3.0.0-5000720260410001",
+    "@dcloudio/uni-mp-jd": "3.0.0-5000720260410001",
+    "@dcloudio/uni-mp-kuaishou": "3.0.0-5000720260410001",
+    "@dcloudio/uni-mp-lark": "3.0.0-5000720260410001",
+    "@dcloudio/uni-mp-qq": "3.0.0-5000720260410001",
+    "@dcloudio/uni-mp-toutiao": "3.0.0-5000720260410001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-5000720260410001",
+    "@dcloudio/uni-mp-xhs": "3.0.0-5000720260410001",
+    "@dcloudio/uni-quickapp-webview": "3.0.0-5000720260410001",
+    "vue": "^3.4.21",
+    "vue-i18n": "^9.1.9"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "^3.4.8",
+    "@dcloudio/uni-automator": "3.0.0-5000720260410001",
+    "@dcloudio/uni-cli-shared": "3.0.0-5000720260410001",
+    "@dcloudio/uni-stacktracey": "3.0.0-5000720260410001",
+    "@dcloudio/vite-plugin-uni": "3.0.0-5000720260410001",
+    "@vue/runtime-core": "^3.4.21",
+    "electron": "^30.5.1",
+    "electron-builder": "^24.13.3",
+    "vite": "5.2.8"
+  }
+}

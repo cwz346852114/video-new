@@ -1,0 +1,16 @@
+﻿{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "Uni Video"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "Uni Video",
+    "navigationBarBackgroundColor": "#10131a",
+    "backgroundColor": "#10131a"
+  }
+}
