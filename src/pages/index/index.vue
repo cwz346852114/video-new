@@ -11,8 +11,8 @@
 
           <view v-else class="player-wrap">
             <view class="player-top-overlay">
-              <text class="player-badge">{{ currentGroup.name }}</text>
-              <text class="player-title">{{ currentMedia.name }}</text>
+              <!-- <text class="player-badge">{{ currentGroup.name }}</text> -->
+              <!-- <text class="player-title">{{ formatDisplayName(currentMedia.name) }}</text> -->
             </view>
             <video
               ref="playerRef"
@@ -26,6 +26,9 @@
               @timeupdate="rememberProgress"
               @loadedmetadata="syncPlaybackRate"
             ></video>
+            <button class="center-play-button" :class="{ playing: isPlaying }" @click.stop="togglePlay">
+              {{ isPlaying ? '⏸' : '▶' }}
+            </button>
             <view v-if="currentMedia.kind === 'audio'" class="audio-overlay">
               <text class="audio-icon">♪</text>
             </view>
@@ -94,8 +97,8 @@
                   <view v-for="item in group.items" :key="item.id" class="media-row" :class="{ active: item.id === currentMediaId }" @click="playItem(item.id, group.id, activeModule)">
                     <text class="media-index">{{ getGroupItemIndex(group, item.id) + 1 }}</text>
                     <view class="media-row-main">
-                      <text class="media-row-name">{{ item.name }}</text>
-                      <text class="media-row-meta">{{ item.ext.toUpperCase() }} · {{ item.kind === 'audio' ? '音频' : '视频' }}{{ getProgressText(item.id) ? ` · ${getProgressText(item.id)}` : '' }}</text>
+                      <text class="media-row-name">{{ formatDisplayName(item.name) }}</text>
+                      <!-- <text class="media-row-meta">{{ item.ext.toUpperCase() }} · {{ item.kind === 'audio' ? '音频' : '视频' }}{{ getProgressText(item.id) ? ` · ${getProgressText(item.id)}` : '' }}</text> -->
                     </view>
                     <button class="move-button" @click.stop="moveItemToGroup(item.id, group.id, activeModule)">移动</button>
                     <button class="remove-button" @click.stop="removeItem(item.id, group.id, activeModule)">移除</button>
@@ -263,6 +266,12 @@ export default {
     },
     getGroupItemIndex(group, itemId) {
       return group.items.findIndex(item => item.id === itemId)
+    },
+    formatDisplayName(name, maxLength = 120) {
+      if (!name || name.length <= maxLength) {
+        return name || ''
+      }
+      return `${name.slice(0, maxLength)}...`
     },
     toggleModule(moduleKey) {
       this.expandedModules[moduleKey] = !this.expandedModules[moduleKey]
@@ -1103,6 +1112,37 @@ button:active {
   font-size: 84rpx;
 }
 
+.center-play-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 5;
+  width: 126rpx;
+  height: 126rpx;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999rpx;
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.62);
+  box-shadow: 0 20rpx 70rpx rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(14rpx);
+  transform: translate(-50%, -50%);
+  line-height: 126rpx;
+  text-align: center;
+  font-size: 48rpx;
+  transition: opacity 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+
+.center-play-button.playing {
+  opacity: 0.38;
+}
+
+.player-wrap:hover .center-play-button,
+.center-play-button:active {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.04);
+}
+
 .control-bar {
   position: absolute;
   right: 28rpx;
@@ -1274,6 +1314,7 @@ button:active {
 
   /* height: 64rpx; */
   /* padding: 8px 12px; */
+  width:100%;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18rpx;
   color: #ffffff;
