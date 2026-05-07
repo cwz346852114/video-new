@@ -1,68 +1,17 @@
 ﻿<template>
   <view class="app-shell" @dragover.prevent @drop.prevent="handleDrop">
-    <view class="sidebar">
-      <view class="brand">
-        <text class="brand-name">Uni Video</text>
-        <text class="brand-desc">本地音视频媒体库</text>
-      </view>
-
-      <view class="module-tabs">
-        <button v-for="module in modules" :key="module.key" class="module-tab" :class="{ active: activeModule === module.key }" @click="switchModule(module.key)">
-          {{ module.label }}
-        </button>
-      </view>
-
-      <view class="sidebar-actions">
-        <button class="action-button" @click="createGroup">新建分组</button>
-        <button class="action-button primary" @click="addFiles">添加到当前分组</button>
-      </view>
-
-      <view class="group-summary">
-        <text class="summary-label">分组总览</text>
-        <text class="summary-value">{{ currentGroups.length }} 个分组 · {{ currentModuleFileCount }} 个文件</text>
-      </view>
-
-      <scroll-view class="group-list" scroll-y>
-        <view v-for="group in currentGroups" :key="group.id" class="group-item" :class="{ active: group.id === activeGroupId }" @click="selectGroup(group.id)">
-          <view class="group-marker"></view>
-          <view>
-            <text class="group-name">{{ group.name }}</text>
-            <text class="group-count">{{ group.items.length }} 个文件 · {{ getGroupDurationText(group) }}</text>
-          </view>
-          <view class="group-actions">
-            <button class="mini-button" @click.stop="renameGroup(group.id)">重命名</button>
-            <button class="mini-button danger" @click.stop="deleteGroup(group.id)">删除</button>
-          </view>
-        </view>
-      </scroll-view>
-    </view>
-
     <view class="main-panel">
-      <view class="topbar">
-        <view>
-          <text class="page-title">{{ activeModuleLabel }} / {{ currentGroup.name }}</text>
-          <text class="page-subtitle">当前只播放「{{ currentGroup.name }}」内的文件；切换分组会切换播放队列。</text>
-        </view>
-        <view class="topbar-actions">
-          <button class="small-button" @click="togglePlayMode">播放模式：{{ playModeLabel }}</button>
-          <button class="small-button" @click="clearGroup">清空分组</button>
-        </view>
-      </view>
+  
 
       <view class="content-grid">
         <view class="player-section">
-          <view class="now-group-card">
-            <view>
-              <text class="eyebrow">当前分组</text>
-              <text class="now-group-name">{{ currentGroup.name }}</text>
+        <view v-if="!currentMedia" class="empty-state">
+              <text class="empty-icon">▶</text>
+              <text class="empty-title">给「{{ currentGroup.name }}」添加文件</text>
+              <text class="empty-text">添加或拖入文件后，只会进入当前分组，并按该分组列表播放。</text>
             </view>
-            <view class="now-group-stats">
-              <text>{{ currentGroup.items.length }} 个文件</text>
-              <text>{{ activeQueueText }}</text>
-            </view>
-          </view>
 
-          <view class="player-card">
+          <view v-else class="player-card">
             <view v-if="!currentMedia" class="empty-state">
               <text class="empty-icon">▶</text>
               <text class="empty-title">给「{{ currentGroup.name }}」添加文件</text>
@@ -90,58 +39,84 @@
                 <text class="audio-icon">♪</text>
               </view>
               <view class="player-bottom-fade"></view>
+              <view class="control-bar">
+                <button class="control-button ghost" @click="seekBy(-10)">↶</button>
+                <button class="control-button" @click="playPrevious">⏮</button>
+                <button class="control-button play-control" @click="togglePlay">⏯</button>
+                <button class="control-button" @click="playNext">⏭</button>
+                <button class="control-button ghost" @click="seekBy(10)">↷</button>
+                <button class="control-button ghost" @click="changeVolume(-0.1)">🔉</button>
+                <button class="control-button ghost" @click="changeVolume(0.1)">🔊</button>
+                <button class="control-button ghost tooltip-button" :data-tip="`播放模式：${playModeLabel}`" @click="togglePlayMode">{{ playModeIcon }}</button>
+                <button class="control-button ghost" @click="toggleFullscreen">⛶</button>
+                <view class="speed-box">
+                  <text class="speed-label">倍速</text>
+                  <picker :value="speedIndex" :range="speedOptions" @change="changeSpeed">
+                    <view class="speed-picker">{{ playbackRate }}x</view>
+                  </picker>
+                </view>
+                <view class="speed-box volume-box">
+                  <text class="speed-label">音量</text>
+                  <text class="speed-picker">{{ volumePercent }}%</text>
+                </view>
+              </view>
             </view>
           </view>
 
-          <view class="control-bar">
-            <button class="control-button ghost" @click="seekBy(-10)">-10s</button>
-            <button class="control-button" @click="playPrevious">上一首</button>
-            <button class="control-button play-control" @click="togglePlay">播放 / 暂停</button>
-            <button class="control-button" @click="playNext">下一首</button>
-            <button class="control-button ghost" @click="seekBy(10)">+10s</button>
-            <button class="control-button ghost" @click="changeVolume(-0.1)">音量-</button>
-            <button class="control-button ghost" @click="changeVolume(0.1)">音量+</button>
-            <button class="control-button ghost" @click="toggleFullscreen">全屏</button>
-            <view class="speed-box">
-              <text class="speed-label">倍速</text>
-              <picker :value="speedIndex" :range="speedOptions" @change="changeSpeed">
-                <view class="speed-picker">{{ playbackRate }}x</view>
-              </picker>
-            </view>
-            <view class="speed-box">
-              <text class="speed-label">音量</text>
-              <text class="speed-picker">{{ volumePercent }}%</text>
-            </view>
-          </view>
-
-          <view v-if="currentMedia" class="media-info">
-            <text class="media-name">正在播放：{{ currentMedia.name }}</text>
-            <text class="media-path">{{ currentMedia.path }}</text>
-            <text v-if="currentProgressText" class="media-path">已记忆进度：{{ currentProgressText }}</text>
-            <text v-if="warning" class="warning">{{ warning }}</text>
-          </view>
         </view>
 
-        <view class="playlist-section">
-          <view class="playlist-header">
-            <text class="playlist-title">{{ currentGroup.name }} · 播放队列</text>
-            <text class="playlist-tip">{{ currentGroup.items.length }} 个文件，{{ playModeLabel }}播放。添加文件会进入当前分组。</text>
-            <input class="search-input" v-model="searchKeyword" placeholder="搜索文件名或路径" placeholder-class="search-placeholder" />
-          </view>
-
-          <scroll-view class="playlist" scroll-y>
-            <view v-if="currentGroup.items.length === 0" class="list-empty">当前分组还没有文件</view>
-            <view v-else-if="filteredItems.length === 0" class="list-empty">没有匹配的文件</view>
-            <view v-for="item in filteredItems" :key="item.id" class="media-row" :class="{ active: item.id === currentMediaId }" @click="playItem(item.id)">
-              <text class="media-index">{{ getItemIndex(item.id) + 1 }}</text>
-              <view class="media-row-main">
-                <text class="media-row-name">{{ item.name }}</text>
-                <text class="media-row-meta">{{ item.ext.toUpperCase() }} · {{ item.kind === 'audio' ? '音频' : '视频' }}{{ getProgressText(item.id) ? ` · ${getProgressText(item.id)}` : '' }}</text>
+        <view class="right-panel">
+          <view class="library-section">
+            <view class="panel-header">
+              <view>
+                <text class="playlist-title">媒体库</text>
+                <text class="playlist-tip">{{ activeModuleLabel }} · {{ currentGroups.length }} 个分组 · {{ currentModuleFileCount }} 个文件</text>
               </view>
-              <button class="move-button" @click.stop="moveItemToGroup(item.id)">移动</button>
-              <button class="remove-button" @click.stop="removeItem(item.id)">移除</button>
+              <button class="icon-action" @click="addFiles">＋</button>
             </view>
-          </scroll-view>
+
+            <view class="library-tabs">
+              <button v-for="module in modules" :key="module.key" class="library-tab" :class="{ active: activeModule === module.key }" @click="switchModule(module.key)">
+                {{ module.label }}
+              </button>
+            </view>
+
+            <input class="search-input" v-model="searchKeyword" placeholder="搜索当前分组内容" placeholder-class="search-placeholder" />
+
+            <scroll-view class="library-tree" scroll-y>
+              <view class="module-tools">
+                <text class="playlist-tip">当前 {{ activeModuleLabel }}</text>
+                <button class="icon-action small" @click.stop="createGroup(activeModule)">＋</button>
+              </view>
+
+              <view v-for="group in currentGroups" :key="group.id" class="group-node">
+                <view class="group-item" :class="{ active: group.id === activeGroupId }" @click="selectGroup(group.id, activeModule)">
+                  <view class="group-marker"></view>
+                  <view class="tree-main" @click.stop="toggleGroup(group.id, activeModule)">
+                    <text class="group-name">{{ expandedGroups[group.id] ? '▾' : '▸' }} {{ group.name }}</text>
+                    <text class="group-count">{{ group.items.length }} 个文件 · {{ getGroupDurationText(group) }}</text>
+                  </view>
+                  <view class="group-actions">
+                    <button class="mini-button icon-mini tooltip-button" data-tip="重命名" @click.stop="renameGroup(group.id, activeModule)">✎</button>
+                    <button class="mini-button icon-mini danger tooltip-button" data-tip="删除" @click.stop="deleteGroup(group.id, activeModule)">🗑</button>
+                  </view>
+                </view>
+
+                <view v-if="expandedGroups[group.id]" class="media-children">
+                  <view v-if="getVisibleItems(group, activeModule).length === 0" class="list-empty compact">{{ group.items.length ? '没有匹配的文件' : '当前分组还没有文件' }}</view>
+                  <view v-for="item in getVisibleItems(group, activeModule)" :key="item.id" class="media-row" :class="{ active: item.id === currentMediaId }" @click="playItem(item.id, group.id, activeModule)">
+                    <text class="media-index">{{ getGroupItemIndex(group, item.id) + 1 }}</text>
+                    <view class="media-row-main">
+                      <text class="media-row-name">{{ item.name }}</text>
+                      <text class="media-row-meta">{{ item.ext.toUpperCase() }} · {{ item.kind === 'audio' ? '音频' : '视频' }}{{ getProgressText(item.id) ? ` · ${getProgressText(item.id)}` : '' }}</text>
+                    </view>
+                    <button class="move-button" @click.stop="moveItemToGroup(item.id, group.id, activeModule)">移动</button>
+                    <button class="remove-button" @click.stop="removeItem(item.id, group.id, activeModule)">移除</button>
+                  </view>
+                </view>
+              </view>
+            </scroll-view>
+          </view>
         </view>
       </view>
     </view>
@@ -158,6 +133,11 @@ const playModeMap = {
   order: '顺序',
   single: '单曲',
   random: '随机',
+}
+const playModeIconMap = {
+  order: '⇄',
+  single: '↻',
+  random: '🔀',
 }
 
 function createDefaultLibrary() {
@@ -198,6 +178,8 @@ export default {
       progressMap: {},
       searchKeyword: '',
       warning: '',
+      expandedModules: { video: true, audio: true },
+      expandedGroups: { 'video-default': true },
     }
   },
   mounted() {
@@ -226,6 +208,9 @@ export default {
     },
     playModeLabel() {
       return playModeMap[this.playMode]
+    },
+    playModeIcon() {
+      return playModeIconMap[this.playMode]
     },
     volumePercent() {
       return Math.round(this.volume * 100)
@@ -287,14 +272,50 @@ export default {
     },
   },
   methods: {
+    getModuleGroups(moduleKey) {
+      return this.library[moduleKey] || []
+    },
+    getModuleFileCount(moduleKey) {
+      return this.getModuleGroups(moduleKey).reduce((total, group) => total + group.items.length, 0)
+    },
+    getModuleLabel(moduleKey) {
+      return this.modules.find(module => module.key === moduleKey)?.label || ''
+    },
+    getGroupItemIndex(group, itemId) {
+      return group.items.findIndex(item => item.id === itemId)
+    },
+    getVisibleItems(group, moduleKey) {
+      const keyword = this.searchKeyword.trim().toLowerCase()
+      if (!keyword || group.id !== this.activeGroupId || moduleKey !== this.activeModule) {
+        return group.items
+      }
+      return group.items.filter(item => `${item.name} ${item.path}`.toLowerCase().includes(keyword))
+    },
+    toggleModule(moduleKey) {
+      this.expandedModules[moduleKey] = !this.expandedModules[moduleKey]
+      if (!this.expandedModules[moduleKey]) {
+        return
+      }
+      if (this.activeModule !== moduleKey) {
+        this.switchModule(moduleKey)
+      }
+    },
+    toggleGroup(groupId, moduleKey = this.activeModule) {
+      this.expandedGroups[groupId] = !this.expandedGroups[groupId]
+      if (this.expandedGroups[groupId]) {
+        this.selectGroup(groupId, moduleKey)
+      }
+    },
     switchModule(moduleKey) {
       this.activeModule = moduleKey
+      this.expandedModules[moduleKey] = true
       this.activeGroupId = this.library[moduleKey][0].id
+      this.expandedGroups[this.activeGroupId] = true
       this.currentMediaId = this.currentGroup.items[0]?.id || ''
       this.warning = ''
     },
-    renameGroup(groupId) {
-      const group = this.currentGroups.find(item => item.id === groupId)
+    renameGroup(groupId, moduleKey = this.activeModule) {
+      const group = this.getModuleGroups(moduleKey).find(item => item.id === groupId)
       if (!group) {
         return
       }
@@ -303,40 +324,51 @@ export default {
         group.name = groupName
       }
     },
-    deleteGroup(groupId) {
-      if (this.currentGroups.length <= 1) {
+    deleteGroup(groupId, moduleKey = this.activeModule) {
+      const groups = this.getModuleGroups(moduleKey)
+      if (groups.length <= 1) {
         this.warning = '至少需要保留一个分组。'
         return
       }
-      const group = this.currentGroups.find(item => item.id === groupId)
+      const group = groups.find(item => item.id === groupId)
       if (!group || !window.confirm(`确定删除「${group.name}」吗？`)) {
         return
       }
-      this.library[this.activeModule] = this.currentGroups.filter(item => item.id !== groupId)
-      if (this.activeGroupId === groupId) {
-        this.activeGroupId = this.library[this.activeModule][0].id
+      this.library[moduleKey] = groups.filter(item => item.id !== groupId)
+      delete this.expandedGroups[groupId]
+      if (this.activeGroupId === groupId || this.activeModule === moduleKey) {
+        this.activeModule = moduleKey
+        this.activeGroupId = this.library[moduleKey][0].id
+        this.expandedGroups[this.activeGroupId] = true
         this.currentMediaId = ''
       }
     },
-    selectGroup(groupId) {
+    selectGroup(groupId, moduleKey = this.activeModule) {
+      this.activeModule = moduleKey
+      this.expandedModules[moduleKey] = true
+      this.expandedGroups[groupId] = true
       this.activeGroupId = groupId
       this.currentMediaId = this.currentGroup.items[0]?.id || ''
       this.warning = ''
     },
-    createGroup() {
-      const defaultName = this.activeModule === 'video' ? '视频分组' : '音频分组'
-      const groupName = window.prompt('请输入分组名称', `${defaultName}${this.currentGroups.length + 1}`)
+    createGroup(moduleKey = this.activeModule) {
+      const groups = this.getModuleGroups(moduleKey)
+      const defaultName = moduleKey === 'video' ? '视频分组' : '音频分组'
+      const groupName = window.prompt('请输入分组名称', `${defaultName}${groups.length + 1}`)
       if (!groupName) {
         return
       }
 
       const group = {
-        id: `${this.activeModule}-${Date.now()}`,
+        id: `${moduleKey}-${Date.now()}`,
         name: groupName.trim(),
         items: [],
       }
-      this.library[this.activeModule].push(group)
+      this.library[moduleKey].push(group)
+      this.activeModule = moduleKey
       this.activeGroupId = group.id
+      this.expandedModules[moduleKey] = true
+      this.expandedGroups[group.id] = true
     },
     async addFiles() {
       if (window.electronMedia) {
@@ -416,50 +448,66 @@ export default {
 
       this.warning = skippedCount ? `已跳过 ${skippedCount} 个不属于当前${this.activeModuleLabel}模块的文件。` : this.getFormatWarning(matchedFiles[0]?.ext)
     },
-    playItem(itemId) {
+    playItem(itemId, groupId = this.activeGroupId, moduleKey = this.activeModule) {
+      if (groupId !== this.activeGroupId || moduleKey !== this.activeModule) {
+        this.activeModule = moduleKey
+        this.activeGroupId = groupId
+        this.expandedModules[moduleKey] = true
+        this.expandedGroups[groupId] = true
+      }
       this.currentMediaId = itemId
       this.warning = this.getFormatWarning(this.currentMedia?.ext)
     },
     getItemIndex(itemId) {
       return this.currentGroup.items.findIndex(item => item.id === itemId)
     },
-    moveItemToGroup(itemId) {
-      if (this.currentGroups.length <= 1) {
+    moveItemToGroup(itemId, groupId = this.activeGroupId, moduleKey = this.activeModule) {
+      const groups = this.getModuleGroups(moduleKey)
+      const sourceGroup = groups.find(group => group.id === groupId)
+      if (!sourceGroup) {
+        return
+      }
+      if (groups.length <= 1) {
         this.warning = '请先新建其它分组，再移动文件。'
         return
       }
 
-      const sourceIndex = this.currentGroup.items.findIndex(item => item.id === itemId)
+      const sourceIndex = sourceGroup.items.findIndex(item => item.id === itemId)
       if (sourceIndex < 0) {
         return
       }
 
-      const options = this.currentGroups
-        .filter(group => group.id !== this.activeGroupId)
+      const options = groups
+        .filter(group => group.id !== groupId)
         .map((group, index) => `${index + 1}. ${group.name}`)
         .join('\n')
       const selectedNumber = Number(window.prompt(`移动到哪个分组？\n${options}`))
-      const targetGroup = this.currentGroups.filter(group => group.id !== this.activeGroupId)[selectedNumber - 1]
+      const targetGroup = groups.filter(group => group.id !== groupId)[selectedNumber - 1]
       if (!targetGroup) {
         return
       }
 
-      const [item] = this.currentGroup.items.splice(sourceIndex, 1)
+      const [item] = sourceGroup.items.splice(sourceIndex, 1)
       targetGroup.items.push(item)
       if (this.currentMediaId === itemId) {
-        this.currentMediaId = this.currentGroup.items[sourceIndex]?.id || this.currentGroup.items[sourceIndex - 1]?.id || ''
+        this.currentMediaId = sourceGroup.items[sourceIndex]?.id || sourceGroup.items[sourceIndex - 1]?.id || ''
       }
+      this.expandedGroups[targetGroup.id] = true
       this.warning = `已移动到「${targetGroup.name}」。`
     },
-    removeItem(itemId) {
-      const itemIndex = this.currentGroup.items.findIndex(item => item.id === itemId)
+    removeItem(itemId, groupId = this.activeGroupId, moduleKey = this.activeModule) {
+      const group = this.getModuleGroups(moduleKey).find(item => item.id === groupId)
+      if (!group) {
+        return
+      }
+      const itemIndex = group.items.findIndex(item => item.id === itemId)
       if (itemIndex < 0) {
         return
       }
 
-      this.currentGroup.items.splice(itemIndex, 1)
+      group.items.splice(itemIndex, 1)
       if (this.currentMediaId === itemId) {
-        this.currentMediaId = this.currentGroup.items[itemIndex]?.id || this.currentGroup.items[itemIndex - 1]?.id || ''
+        this.currentMediaId = group.items[itemIndex]?.id || group.items[itemIndex - 1]?.id || ''
       }
     },
     clearGroup() {
@@ -663,6 +711,8 @@ export default {
         this.playMode = playModes.includes(state.playMode) ? state.playMode : this.playMode
         this.volume = typeof state.volume === 'number' ? Math.min(1, Math.max(0, state.volume)) : this.volume
         this.progressMap = state.progressMap || {}
+        this.expandedModules[this.activeModule] = true
+        this.expandedGroups[this.activeGroupId] = true
       } catch (error) {
         this.warning = '读取本地播放数据失败，已使用默认媒体库。'
       }
@@ -695,6 +745,8 @@ export default {
 
 <style>
 page {
+  height: 100%;
+  overflow: hidden;
   background: #070b14;
 }
 
@@ -711,180 +763,39 @@ button:active {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
-  color: #f7f9ff;
-  background:
-    radial-gradient(circle at 14% 0%, rgba(57, 119, 255, 0.36), transparent 30%),
-    radial-gradient(circle at 88% 12%, rgba(152, 93, 255, 0.18), transparent 28%),
-    linear-gradient(135deg, #070b14 0%, #0b1020 52%, #111827 100%);
-}
-
-.sidebar {
-  width: 340rpx;
-  box-sizing: border-box;
-  padding: 38rpx 24rpx;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.94), rgba(8, 13, 24, 0.9));
-  box-shadow: 18rpx 0 70rpx rgba(0, 0, 0, 0.28);
-}
-
-.brand {
-  position: relative;
-  margin-bottom: 34rpx;
-  padding: 26rpx 24rpx;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  border-radius: 26rpx;
-  background: linear-gradient(135deg, rgba(47, 107, 255, 0.32), rgba(138, 92, 255, 0.16));
-  box-shadow: 0 18rpx 42rpx rgba(47, 107, 255, 0.16);
-}
+  color: #f7f9ff;
 
-.brand::after {
-  content: '';
-  position: absolute;
-  top: -42rpx;
-  right: -38rpx;
-  width: 110rpx;
-  height: 110rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.brand-name,
-.brand-desc,
-.page-title,
-.page-subtitle,
-.group-name,
-.group-count,
-.eyebrow,
-.now-group-name,
-.now-group-stats text,
-.player-badge,
-.player-title,
-.playlist-title,
-.playlist-tip,
-.media-row-name,
-.media-row-meta,
-.media-name,
-.media-path,
-.warning,
-.empty-title,
-.empty-text {
-  display: block;
-}
-
-.brand-name {
-  position: relative;
-  font-size: 38rpx;
-  font-weight: 900;
-  letter-spacing: 0.5rpx;
-}
-
-.brand-desc,
-.page-subtitle,
-.group-count,
-.playlist-tip,
-.media-row-meta,
-.media-path {
-  color: #92a0bb;
-  font-size: 22rpx;
-}
-
-.brand-desc {
-  position: relative;
-  margin-top: 8rpx;
-  color: #dbe6ff;
-}
-
-.module-tabs {
-  display: flex;
-  gap: 12rpx;
-  padding: 8rpx;
-  margin-bottom: 24rpx;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 22rpx;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.module-tab,
-.action-button,
-.small-button,
-.control-button,
-.move-button,
-.remove-button,
-.mini-button {
-  margin: 0;
-  color: #dce7ff;
-  background: rgba(255, 255, 255, 0.075);
-  border-radius: 16rpx;
-  font-size: 24rpx;
-  line-height: 2.45;
-}
-
-.module-tab {
-  flex: 1;
-  background: transparent;
-}
-
-.module-tab.active,
-.action-button.primary {
-  color: #ffffff;
-  background: linear-gradient(135deg, #3478ff, #7c5cff);
-  box-shadow: 0 16rpx 34rpx rgba(52, 120, 255, 0.28);
-}
-
-.action-button {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.sidebar-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 14rpx;
-  margin-bottom: 18rpx;
-}
-
-.group-summary {
-  padding: 18rpx;
-  margin-bottom: 20rpx;
-  border: 1px solid rgba(96, 165, 250, 0.16);
-  border-radius: 20rpx;
-  background: rgba(37, 99, 235, 0.1);
-}
-
-.summary-label,
-.summary-value {
-  display: block;
-}
-
-.summary-label {
-  margin-bottom: 6rpx;
-  color: #8fb8ff;
-  font-size: 20rpx;
-  font-weight: 800;
-}
-
-.summary-value {
-  color: #dbeafe;
-  font-size: 23rpx;
-}
-
-.group-list {
-  height: calc(100vh - 390rpx);
 }
 
 .group-item {
   position: relative;
-  display: grid;
-  grid-template-columns: 10rpx minmax(0, 1fr);
-  column-gap: 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
   padding: 22rpx;
   margin-bottom: 14rpx;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 22rpx;
   background: rgba(255, 255, 255, 0.052);
+}
+
+.group-item.active {
+  border-color: rgba(83, 136, 255, 0.72);
+  background: linear-gradient(135deg, rgba(47, 107, 255, 0.3), rgba(124, 92, 255, 0.13));
+  box-shadow: 0 16rpx 38rpx rgba(0, 0, 0, 0.16);
+}
+
+.media-children {
+  padding: 0 0 8rpx 34rpx;
+}
+
+.tree-main {
+  min-width: 0;
+  flex: 1;
 }
 
 .group-marker {
@@ -894,22 +805,14 @@ button:active {
   background: rgba(255, 255, 255, 0.16);
 }
 
-.group-item.active {
-  border-color: rgba(83, 136, 255, 0.72);
-  background: linear-gradient(135deg, rgba(47, 107, 255, 0.3), rgba(124, 92, 255, 0.13));
-  box-shadow: 0 16rpx 38rpx rgba(0, 0, 0, 0.16);
-}
-
 .group-item.active .group-marker {
   background: linear-gradient(180deg, #78a7ff, #8b5cf6);
   box-shadow: 0 0 26rpx rgba(96, 165, 250, 0.45);
 }
 
 .group-actions {
-  grid-column: 2;
   display: flex;
   gap: 10rpx;
-  margin-top: 16rpx;
 }
 
 .mini-button {
@@ -941,12 +844,19 @@ button:active {
 }
 
 .main-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   box-sizing: border-box;
   padding: 36rpx;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .topbar {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -974,10 +884,37 @@ button:active {
 }
 
 .content-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 480rpx;
-  gap: 30rpx;
-  align-items: start;
+  flex: 1;
+  position: relative;
+  height: auto;
+  min-height: 0;
+}
+
+.player-section {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.right-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 30%;
+  min-width: 360rpx;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  height: 100%;
 }
 
 .now-group-card {
@@ -1025,7 +962,7 @@ button:active {
 
 .player-card,
 .media-info,
-.playlist-section {
+.library-section {
   border: 1px solid rgba(255, 255, 255, 0.11);
   background: linear-gradient(180deg, rgba(20, 28, 46, 0.78), rgba(12, 18, 31, 0.82));
   box-shadow: 0 28rpx 86rpx rgba(0, 0, 0, 0.3);
@@ -1033,14 +970,16 @@ button:active {
 }
 
 .player-card {
-  min-height: 650rpx;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
-  border-radius: 38rpx;
+  border-radius: 0;
   background: #020617;
 }
 
 .empty-state {
-  min-height: 650rpx;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1078,7 +1017,7 @@ button:active {
 .player-wrap,
 .player {
   width: 100%;
-  height: 720rpx;
+  height: 100%;
 }
 
 .player-wrap {
@@ -1170,32 +1109,84 @@ button:active {
 }
 
 .control-bar {
+  position: absolute;
+  right: 28rpx;
+  bottom: 30rpx;
+  left: 28rpx;
+  z-index: 4;
   display: flex;
   flex-wrap: wrap;
   gap: 14rpx;
-  margin-top: 24rpx;
   padding: 18rpx;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 28rpx;
-  background: rgba(15, 23, 42, 0.68);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(18rpx);
+  background: rgba(15, 23, 42, 0.78);
+  box-shadow: 0 18rpx 60rpx rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(18rpx);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.player-wrap:hover .control-bar,
+.control-bar:active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
 }
 
 .control-button {
+  position: relative;
+  width: 64rpx;
+  height: 64rpx;
+  padding: 0;
   color: #e7eeff;
+  text-align: center;
+  line-height: 64rpx;
+  font-size: 28rpx;
 }
 
 .control-button.play-control {
-  min-width: 178rpx;
+  width: 76rpx;
+  height: 76rpx;
   color: #ffffff;
   background: linear-gradient(135deg, #2563eb, #7c3aed);
   box-shadow: 0 16rpx 36rpx rgba(37, 99, 235, 0.28);
+  line-height: 76rpx;
   font-weight: 800;
 }
 
 .control-button.ghost {
   color: #b9c7e6;
   background: rgba(255, 255, 255, 0.055);
+}
+
+.tooltip-button::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: 50%;
+  bottom: calc(100% + 14rpx);
+  z-index: 6;
+  width: max-content;
+  max-width: 260rpx;
+  padding: 10rpx 16rpx;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14rpx;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(50%) translateY(8rpx);
+  color: #eef4ff;
+  background: rgba(2, 6, 23, 0.9);
+  box-shadow: 0 12rpx 34rpx rgba(0, 0, 0, 0.24);
+  line-height: 1.35;
+  font-size: 22rpx;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.tooltip-button:hover::after {
+  opacity: 1;
+  transform: translateX(50%) translateY(0);
 }
 
 .speed-box {
@@ -1206,6 +1197,10 @@ button:active {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16rpx;
   background: rgba(255, 255, 255, 0.075);
+}
+
+.volume-box {
+  margin-left: auto;
 }
 
 .speed-label,
@@ -1226,10 +1221,80 @@ button:active {
 }
 
 .media-info,
-.playlist-section {
+.library-section {
   margin-top: 24rpx;
   padding: 26rpx;
   border-radius: 26rpx;
+}
+
+.library-section {
+  margin-top: 0;
+}
+
+.library-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10rpx;
+  padding: 8rpx;
+  margin-bottom: 18rpx;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.library-tab {
+  margin: 0;
+  padding: 0 18rpx;
+  border-radius: 15rpx;
+  color: #b9c7e6;
+  background: transparent;
+  line-height: 2.35;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.library-tab.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #3478ff, #7c5cff);
+  box-shadow: 0 12rpx 28rpx rgba(52, 120, 255, 0.24);
+}
+
+.module-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 14rpx;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+
+.icon-action {
+  width: 64rpx;
+  height: 64rpx;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18rpx;
+  color: #ffffff;
+  background: linear-gradient(135deg, #3478ff, #7c5cff);
+  line-height: 64rpx;
+  font-size: 34rpx;
+  font-weight: 800;
+}
+
+.icon-action.small {
+  width: 52rpx;
+  height: 52rpx;
+  flex: 0 0 52rpx;
+  border-radius: 15rpx;
+  line-height: 52rpx;
+  font-size: 28rpx;
 }
 
 .media-name {
@@ -1252,10 +1317,14 @@ button:active {
   font-size: 24rpx;
 }
 
-.playlist-section {
-  height: 824rpx;
+.library-section {
+  height: 100%;
   box-sizing: border-box;
-  margin-top: 0;
+}
+
+.library-tree {
+  height: calc(100% - 222rpx);
+  margin-top: 20rpx;
 }
 
 .playlist-header {
@@ -1284,15 +1353,16 @@ button:active {
   color: #64728d;
 }
 
-.playlist {
-  height: 696rpx;
-}
-
 .list-empty {
   padding: 54rpx 0;
   color: #92a0bb;
   text-align: center;
   font-size: 24rpx;
+}
+
+.list-empty.compact {
+  padding: 20rpx 0 28rpx;
+  text-align: left;
 }
 
 .media-row {
@@ -1348,9 +1418,8 @@ button:active {
 }
 
 @media screen and (min-width: 901px) {
-  .module-tab:hover,
-  .action-button:hover,
   .small-button:hover,
+  .library-tab:hover,
   .control-button:hover,
   .mini-button:hover,
   .remove-button:hover,
@@ -1361,49 +1430,34 @@ button:active {
 
   .control-button:hover,
   .small-button:hover,
-  .action-button:hover {
+  .library-tab:hover {
     background: rgba(255, 255, 255, 0.12);
     box-shadow: 0 14rpx 34rpx rgba(0, 0, 0, 0.14);
   }
 }
 
 @media screen and (max-width: 900px) {
+  page {
+    height: auto;
+    overflow: auto;
+  }
+
   .app-shell {
+    height: auto;
+    min-height: 100vh;
     display: block;
-  }
-
-  .sidebar {
-    width: auto;
-    padding: 24rpx;
-    border-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .brand {
-    margin-bottom: 20rpx;
-  }
-
-  .sidebar-actions {
-    flex-direction: row;
-  }
-
-  .action-button {
-    flex: 1;
-  }
-
-  .group-list {
-    height: 160rpx;
-    white-space: nowrap;
+    overflow: auto;
   }
 
   .group-item {
-    display: inline-block;
-    min-width: 230rpx;
-    margin-right: 12rpx;
-    vertical-align: top;
+    min-width: 0;
   }
 
   .main-panel {
+    display: block;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
     padding: 24rpx;
   }
 
@@ -1419,11 +1473,22 @@ button:active {
   }
 
   .content-grid {
+    position: static;
     display: block;
+    height: auto;
+  }
+
+  .player-section,
+  .right-panel {
+    position: static;
+    width: auto;
+    min-width: 0;
+    height: auto;
   }
 
   .player-card,
   .empty-state {
+    height: auto;
     min-height: 430rpx;
   }
 
@@ -1432,16 +1497,13 @@ button:active {
     height: 460rpx;
   }
 
-  .playlist-section {
+  .library-section {
     height: auto;
     margin-top: 24rpx;
   }
 
-  .playlist {
+  .library-tree {
     height: 520rpx;
   }
 }
 </style>
-
-
-

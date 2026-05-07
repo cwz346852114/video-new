@@ -5,6 +5,10 @@
   "author": "",
   "main": "electron/main.cjs",
   "scripts": {
+    "dev:web": "uni -p h5",
+    "build:web": "uni build -p h5",
+    "dev:h5": "uni -p h5",
+    "build:h5": "uni build -p h5",
     "dev:electron": "electron . --dev",
     "build:electron": "uni build && electron-builder --win",
     "dev:android": "uni -p app",
