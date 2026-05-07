@@ -34,15 +34,15 @@
             </view>
             <view class="player-bottom-fade"></view>
             <view class="control-bar">
-              <button class="control-button ghost tooltip-button" data-tip="后退 10 秒" @click="seekBy(-10)">↶</button>
-              <button class="control-button tooltip-button" data-tip="上一个" @click="playPrevious">⏮</button>
-              <button class="control-button play-control tooltip-button" :data-tip="isPlaying ? '暂停' : '播放'" @click="togglePlay">{{ isPlaying ? '⏸' : '▶' }}</button>
-              <button class="control-button tooltip-button" data-tip="下一个" @click="playNext">⏭</button>
-              <button class="control-button ghost tooltip-button" data-tip="快进 10 秒" @click="seekBy(10)">↷</button>
-              <button class="control-button ghost tooltip-button" data-tip="降低音量" @click="changeVolume(-0.1)">🔉</button>
-              <button class="control-button ghost tooltip-button" data-tip="提高音量" @click="changeVolume(0.1)">🔊</button>
-              <button class="control-button ghost tooltip-button" :data-tip="`播放模式：${playModeLabel}`" @click="togglePlayMode">{{ playModeIcon }}</button>
-              <button class="control-button ghost tooltip-button" data-tip="全屏" @click="toggleFullscreen">⛶</button>
+              <button class="control-button ghost" @click="seekBy(-10)">↶</button>
+              <button class="control-button" @click="playPrevious">⏮</button>
+              <button class="control-button play-control" @click="togglePlay">{{ isPlaying ? '⏸' : '▶' }}</button>
+              <button class="control-button" @click="playNext">⏭</button>
+              <button class="control-button ghost" @click="seekBy(10)">↷</button>
+              <button class="control-button ghost" @click="changeVolume(-0.1)">🔉</button>
+              <button class="control-button ghost" @click="changeVolume(0.1)">🔊</button>
+              <button class="control-button ghost" @click="togglePlayMode">{{ playModeIcon }}</button>
+              <button class="control-button ghost" @click="toggleFullscreen">⛶</button>
               <view class="speed-box">
                 <text class="speed-label">倍速</text>
                 <picker :value="speedIndex" :range="speedOptions" @change="changeSpeed">
